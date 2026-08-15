@@ -1,59 +1,61 @@
-# WiFi Thermometer — Soğuk Oda Sıcaklık Takip Sistemi
+# WiFi Thermometer — Cold Room Temperature Monitor
 
-> **Bu proje aktif olarak bir aile işletmesinde, endüstriyel bir soğuk odanın sıcaklık takibi için üretimde kullanılmaktadır.** Kod üzerinde değişiklik yaparken bunu göz önünde bulundurun; hatalı bir push gerçek bir soğutma sisteminin izlenmesini kesintiye uğratabilir.
+> **This project is actively running in production, monitoring an industrial cold storage room for a family business.** Keep that in mind when changing the code — a bad push can interrupt monitoring of a real refrigeration system.
 
-ESP32 tabanlı, DS18B20 sıcaklık sensörüyle soğuk oda sıcaklığını okuyup Firebase Realtime Database'e yazan bir izleme sistemi. Sıcaklık, cihaz sağlığı (uptime, WiFi durumu, son yükleme zamanı vb.) ve geçmiş ölçümler buluta aktarılır.
+An ESP32-based system that reads temperature from a DS18B20 sensor and uploads it to Firebase Realtime Database. It reports current temperature, historical readings, and device health (uptime, WiFi status, last upload time, etc.) to the cloud.
 
-## Donanım
+## Hardware
 
 - ESP32 dev board
-- DS18B20 sıcaklık sensörü (OneWire, GPIO4)
+- DS18B20 temperature sensor (OneWire, GPIO4)
 
-## Nasıl çalışıyor
+![Circuit](assets/circuit.jpeg)
 
-1. Cihaz açılışta WiFi'ye bağlanır ve NTP ile saatini senkronize eder.
-2. Firebase'e anonim kimlik doğrulaması ile bağlanır.
-3. Belirli aralıklarla sıcaklık ölçülüp Firebase Realtime Database'e yazılır:
-   - `/sogukoda/current` — anlık sıcaklık (10 sn'de bir)
-   - `/sogukoda/history` — zaman damgalı geçmiş kayıtlar (60 sn'de bir)
-   - `/sogukoda/health` — uptime, WiFi/RSSI durumu, son yükleme yaşı, reset sebebi (60 sn'de bir)
-4. WiFi veya saat senkronizasyonu koparsa cihaz periyodik olarak yeniden dener, veri kaybını asgariye indirmeye çalışır.
-5. Eski geçmiş kayıtların temizliği cihaz üzerinde değil, ayrı bir Cloud Functions job'unda yapılır.
+## How it works
 
-## Kurulum
+1. On boot, the device connects to WiFi and syncs its clock via NTP.
+2. It authenticates to Firebase anonymously.
+3. At regular intervals it reads the temperature and writes to Firebase Realtime Database:
+   - `/sogukoda/current` — current temperature (every 10s)
+   - `/sogukoda/history` — timestamped historical readings (every 60s)
+   - `/sogukoda/health` — uptime, WiFi/RSSI status, last upload age, reset reason (every 60s)
+4. If WiFi or time sync drops, the device retries periodically to minimize data loss.
+5. Cleanup of old history records is handled by a separate Cloud Functions job, not on the device.
 
-### 1. Gerekli araç
+## Setup
 
-[PlatformIO](https://platformio.org/) (VS Code eklentisi veya CLI).
+### 1. Prerequisites
 
-### 2. Gizli bilgiler (WiFi + Firebase)
+[PlatformIO](https://platformio.org/) (VS Code extension or CLI).
 
-WiFi ve Firebase bilgileri kod içinde tutulmaz, `include/secrets.h` dosyasından okunur. Bu dosya `.gitignore` ile repoya dahil edilmez.
+### 2. Secrets (WiFi + Firebase)
+
+WiFi and Firebase credentials are not stored in the code — they're read from `include/secrets.h`, which is excluded from the repo via `.gitignore`.
 
 ```bash
 cp include/secrets.h.example include/secrets.h
 ```
 
-Ardından `include/secrets.h` içine kendi bilgilerinizi girin:
+Then fill in your own values in `include/secrets.h`:
 
 ```cpp
 #define WIFI_SSID "..."
 #define WIFI_PASS "..."
 #define API_KEY "..."
-#define DATABASE_URL "https://<proje-id>-default-rtdb.firebaseio.com/"
+#define DATABASE_URL "https://<project-id>-default-rtdb.firebaseio.com/"
 ```
 
-`API_KEY` ve `DATABASE_URL`, Firebase projenizin Web API Key ve Realtime Database URL değerleridir.
+`API_KEY` and `DATABASE_URL` are your Firebase project's Web API Key and Realtime Database URL.
 
-### 3. Derleme ve yükleme
+### 3. Build and upload
 
 ```bash
 pio run -t upload
 pio device monitor
 ```
 
-## Notlar
+## Notes
 
-- ESP32 yalnızca **2.4GHz** WiFi ağlarına bağlanabilir, 5GHz desteklenmez.
-- `WIFI_RETRY_INTERVAL_MS`, `HEALTH_INTERVAL_MS` gibi zamanlama sabitleri `src/main.cpp` başında tanımlıdır.
-- Elektrik kesintisi / uzun süreli veri gelmemesi bildirimi cihaz üzerinde değil, Cloud Functions tarafında yapılır.
+- ESP32 only supports **2.4GHz** WiFi networks — 5GHz is not supported.
+- Timing constants like `WIFI_RETRY_INTERVAL_MS` and `HEALTH_INTERVAL_MS` are defined at the top of `src/main.cpp`.
+- Power-outage / prolonged-no-data alerting is handled by Cloud Functions, not on the device itself.
