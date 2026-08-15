@@ -7,19 +7,12 @@
 
 #include <Firebase_ESP_Client.h>
 #include "addons/TokenHelper.h"
+#include "secrets.h"
 
 // ========= SENSOR =========
 #define ONE_WIRE_BUS 4
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
-
-// ========= WIFI =========
-#define WIFI_SSID "REDACTED_WIFI_SSID"
-#define WIFI_PASS "REDACTED_WIFI_PASS"
-
-// ========= FIREBASE =========
-#define API_KEY "REDACTED_API_KEY"
-#define DATABASE_URL "https://redacted-project-default-rtdb.firebaseio.com/"
 
 FirebaseData fbdo;
 FirebaseAuth auth;
