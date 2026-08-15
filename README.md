@@ -1,7 +1,5 @@
 # WiFi Thermometer — Cold Room Temperature Monitor
 
-> **This project is actively running in production, monitoring an industrial cold storage room for a family business.** Keep that in mind when changing the code — a bad push can interrupt monitoring of a real refrigeration system.
-
 An ESP32-based system that reads temperature from a DS18B20 sensor and uploads it to Firebase Realtime Database. It reports current temperature, historical readings, and device health (uptime, WiFi status, last upload time, etc.) to the cloud.
 
 ## Hardware
